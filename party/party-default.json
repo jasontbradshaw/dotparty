@@ -1,0 +1,7 @@
+{
+  "destination": "~/",
+  "ignore": [
+    "party",
+    "README.md"
+  ]
+}

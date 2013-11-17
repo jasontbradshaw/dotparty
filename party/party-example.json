@@ -1,0 +1,33 @@
+{
+  "destination": "/custom/dir/to/put/links/in",
+
+  "links": {
+    "simple-path": "~/.foo",
+    "simple-path-obj": {
+      "path": "~/.foo"
+    },
+
+    "multi-path": {
+      "paths": ["~/.foo", "~/.bar"]
+    },
+
+    "simple-machine": {
+      "machine": "machine-id-1"
+    },
+    "multi-machine": {
+      "machines": ["machine-id-1", "machine-id-2"]
+    },
+
+    "all-together-now": {
+      "machine": "machine-id-1",
+      "paths": ["~/.foo", "~/.bar"]
+    }
+  },
+
+  "ignore": [
+    "some",
+    "possibly/*globbed",
+    ".files",
+    "in/the/dotparty/dir"
+  ]
+}
