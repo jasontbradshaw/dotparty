@@ -2,6 +2,8 @@
   "destination": "/custom/dir/to/put/links/in",
 
   "links": {
+    "default": "~/.default",
+
     "simple-path": "~/.foo",
     "simple-path-obj": {
       "path": "~/.foo"
@@ -23,6 +25,11 @@
       "paths": ["~/.foo", "~/.bar"]
     }
   },
+
+  "packages": [
+    "github-user/repository",
+    "git@example.com:direct/repo-url.git"
+  ],
 
   "ignore": [
     "some",

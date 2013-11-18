@@ -3,6 +3,8 @@
 
   "links": {},
 
+  "packages": [],
+
   "ignore": [
     "party",
     "README.md"
