@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import sys
-import os
 import json
+import os
+import platform
+import sys
 
 import util
 
@@ -16,14 +17,19 @@ DEFAULT_CONFIG_PATH = util.normpath("./party-default.json")
 def load_machine_id(path=MACHINE_ID_FILE_PATH):
   '''
   Load the machine id, normalize it, and return it. If there's no machine id
-  file, return None.
+  file, return the hostname of the system. If that's not available, return None.
   '''
 
+  machine_id = None
+
+  # use the machine file if it exists, otherwise fall back on the hostname
   if os.path.exists(path):
     with open(path) as f:
-      return f.read().strip()
+      machine_id = f.read().strip()
+  elif platform.node() != '':
+    machine_id = platform.node()
 
-  return None
+  return machine_id
 
 def load_config(user_path=USER_CONFIG_PATH, default_path=DEFAULT_CONFIG_PATH):
   '''Load the default dotparty config file, then overlay the user's on top.'''
