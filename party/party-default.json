@@ -1,5 +1,8 @@
 {
   "destination": "~/",
+
+  "links": {},
+
   "ignore": [
     "party",
     "README.md"
