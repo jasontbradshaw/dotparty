@@ -35,3 +35,10 @@ def symlink(link_name, source, overwrite=None):
 
   # create the link
   os.symlink(source, link_name)
+
+def ensure_python_version():
+  '''Ensure that we're using the minimum required Python version.'''
+
+  # TODO: determine the actual required version
+  if sys.version_info < (2, 6):
+    raise ValueError("dotparty requires Python version 2.6 or later!")

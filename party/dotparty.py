@@ -29,6 +29,11 @@ def load_machine_id(path=MACHINE_ID_FILE_PATH):
   elif platform.node() != '':
     machine_id = platform.node()
 
+    # fix OSX hostnames returning '.local' at the end
+    local_suffix = '.local'
+    if machine_id.endswith(local_suffix):
+      machine_id = machine_id[:-len(local_suffix)]
+
   return machine_id
 
 def load_config(user_path=USER_CONFIG_PATH, default_path=DEFAULT_CONFIG_PATH):
