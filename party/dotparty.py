@@ -131,8 +131,8 @@ def upgrade(installed_packages=[], *packages):
   '''Upgrade the specified (or all, by default) packages.'''
 
   # TODO:
-  # - iterate over all packages in the installed list and pull them
-  #   asynchronously, updating them if their folders exist, installing otherwise
+  # - iterate over all packages in the installed list and pull them, updating
+  #   them if their folders exist, installing otherwise
   # - do the whole stash/rebase/pop dance during the update
 
 def main():
