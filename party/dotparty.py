@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+import argparse
 import json
 import os
 import platform
-import sys
 
 import util
 
@@ -62,19 +62,94 @@ def load_config(user_path=USER_CONFIG_PATH, default_path=DEFAULT_CONFIG_PATH):
   # this because we always need to ignore our own files, and it's cleaner to do
   # so through the normal ignore channel than to write custom checks everywhere.
   if 'ignore' in user_config:
-    config[u'ignore'] = default_config['ignore'] + user_config['ignore']
+    config['ignore'] = default_config['ignore'] + user_config['ignore']
 
   return config
 
-def main(args):
+def parse_args():
+  '''Set up our arguments and return the parsed namespace.'''
+
+  p = argparse.ArgumentParser(prog='dotparty')
+
+  # requires a command
+  # one of:
+  #   link
+  #   install
+  #   manage
+  #   update
+  #   upgrade
+  p.add_argument('command', nargs=1, help='the command to run')
+
+  return p.parse_args()
+
+def link(src, dest, machine_id, locations):
+  '''Link all the files in the directory to their configured locations.'''
+
+  # TODO:
+  # - find all the files that are immediate children of the base directory
+  # - filter out the ignored files
+  # - filter out files that specify another platform
+  # - build a map of the remaining files to their locations
+  # - link those files
+
+def install(package_or_repo_url, save=False):
+  '''Clone a package to the bundle directory and add it to the config file.'''
+
+  # TODO:
+  # - determine whether we're dealing with a repo URL or a github reference
+  # - build a URL if we weren't given one
+  # - add the package to the config if --save is specifed
+  # - clone it to the package directory
+
+def manage(path):
+  '''
+  Move a file to the base directory and create a link pointing to its original
+  location.
+  '''
+
+  # TODO:
+  # - check if the file is an already-managed link, bail if so
+  # - move the file to the base directory
+  # - create a link in its original location pointing to its new location
+  # - add and commit it to the repo with a standard message
+
+def update():
+  '''Pull dotparty updates from the upstream repository.'''
+
+  # TODO:
+  # - see if there's an upstream ref that matches the canonical repo
+  # - add a new ref if there isn't one, generating a random name if necessary
+  # - fetch updates from the upstream ref
+  # - list the changes, truncating the list if it's too long
+  # - stash current modifications to the repo
+  # - squash rebase the updates on top as a single commit (for a nice history)
+  # - attempt to un-stash the changes
+  # - if rebase failed, roll back to the pre-update state and complain with
+  #   instructions so for user to do their own update
+
+def upgrade(installed_packages=[], *packages):
+  '''Upgrade the specified (or all, by default) packages.'''
+
+  # TODO:
+  # - iterate over all packages in the installed list and pull them
+  #   asynchronously, updating them if their folders exist, installing otherwise
+  # - do the whole stash/rebase/pop dance during the update
+
+def main():
+  # make sure the user has the correct python version installed
+  util.ensure_python_version()
+
   # FIXME: remove this!
   from pprint import pprint as pp
+
+  args = parse_args()
 
   machine_id = load_machine_id()
   config = load_config()
 
+  print 'args:', args
   print 'machine id:', machine_id
   print 'config: ', config
 
 if __name__ == '__main__':
-  main(sys.argv)
+  main()

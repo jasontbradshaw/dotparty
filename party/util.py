@@ -1,4 +1,5 @@
 import os
+import sys
 
 def normpath(path, absolute=False):
   '''Thoroughly normalize a path name, optionally as an absolute path.'''
