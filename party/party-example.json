@@ -2,15 +2,17 @@
   "destination": "/custom/dir/to/put/links/in",
 
   "links": {
-    "default": "~/.default",
+    "relative_to_destination": "/unless/it/starts/with/slash",
 
-    "simple-path": "~/.foo",
+    "defaults_to_this_name_with_dot": ".defaults_to_this_name_with_dot",
+
+    "simple-path": ".foo",
     "simple-path-obj": {
-      "path": "~/.foo"
+      "path": ".foo"
     },
 
     "multi-path": {
-      "paths": ["~/.foo", "~/.bar"]
+      "paths": ["gets/linked", "to/both"]
     },
 
     "simple-machine": {
@@ -22,7 +24,7 @@
 
     "all-together-now": {
       "machine": "machine-id-1",
-      "paths": ["~/.foo", "~/.bar"]
+      "paths": ["/linked/here", ".and/here"]
     }
   },
 
@@ -35,6 +37,7 @@
     "some",
     "possibly/*globbed",
     ".files",
-    "in/the/dotparty/dir"
+    "in/the/dotparty/dir",
+    ".these/are/also/relative"
   ]
 }

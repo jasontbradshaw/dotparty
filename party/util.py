@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 
@@ -11,6 +12,22 @@ def normpath(path, absolute=False):
     path = os.path.abspath(path)
 
   return path
+
+def expand_globs(*files):
+  '''
+  Expand a list of files that may include globs and return the de-duplicated and
+  sorted result.
+  '''
+
+  expanded = set([])
+
+  for f in files:
+    for g in glob.iglob(f):
+      expanded.add(globs)
+    else:
+      expanded.add(i)
+
+  return sorted(expanded)
 
 def symlink(link_name, source, overwrite=None):
   '''
@@ -37,9 +54,9 @@ def symlink(link_name, source, overwrite=None):
   # create the link
   os.symlink(source, link_name)
 
-def ensure_python_version():
+def ensure_python_version(version=(2,7)):
   '''Ensure that we're using the minimum required Python version.'''
 
-  # TODO: determine the actual required version
-  if sys.version_info < (2, 6):
-    raise ValueError("dotparty requires Python version 2.6 or later!")
+  if sys.version_info < version:
+    msg = 'dotparty requires Python version {0} or later!'
+    raise ValueError(msg.format('.'.join(version)))

@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 
-import argparse
 import json
 import os
 import platform
 
+from sh import git
+
+import arguments
 import util
 
 # NOTE: there's currently no try/except error checking since it clutters the
 # code up mightily - it will be added once the overall structure settles down.
+
+# where the dotparty remote lives, and what it should be called
+DOTPARY_REMOTE = ('dotparty', 'https://github.com/jasontbradshaw/dotparty.git')
 
 MACHINE_ID_FILE_PATH = util.normpath("~/.party-machine")
 USER_CONFIG_PATH = util.normpath("~/.party.json")
@@ -62,35 +67,35 @@ def load_config(user_path=USER_CONFIG_PATH, default_path=DEFAULT_CONFIG_PATH):
   # this because we always need to ignore our own files, and it's cleaner to do
   # so through the normal ignore channel than to write custom checks everywhere.
   if 'ignore' in user_config:
-    config['ignore'] = default_config['ignore'] + user_config['ignore']
+    config['ignore'] = set(default_config['ignore'] + user_config['ignore'])
 
   return config
 
-def parse_args():
-  '''Set up our arguments and return the parsed namespace.'''
+def init():
+  '''
+  Initialize dotparty on a new machine. Essentially an alias for:
+    $ dotparty link
+    $ dotparty install
+  '''
 
-  p = argparse.ArgumentParser(prog='dotparty')
-
-  # requires a command
-  # one of:
-  #   link
-  #   install
-  #   manage
-  #   update
-  #   upgrade
-  p.add_argument('command', nargs=1, help='the command to run')
-
-  return p.parse_args()
-
-def link(src, dest, machine_id, locations):
+def link(src, dest, machine_id, locations=[], ignored=[]):
   '''Link all the files in the directory to their configured locations.'''
 
   # TODO:
-  # - find all the files that are immediate children of the base directory
   # - filter out the ignored files
   # - filter out files that specify another platform
   # - build a map of the remaining files to their locations
   # - link those files
+
+  ignored = util.expand_globs(ignored)
+
+  # get all the files that are immediate children of the base directory
+  files = [util.normpath(f, True) for f in os.listdir(src)]
+
+  # filter out hidden files
+  files = filter(lambda f: not os.path.basename(f).startswith('.'), files)
+
+  print ignored, files
 
 def install(package_or_repo_url, save=False):
   '''Clone a package to the bundle directory and add it to the config file.'''
@@ -127,7 +132,7 @@ def update():
   # - if rebase failed, roll back to the pre-update state and complain with
   #   instructions so for user to do their own update
 
-def upgrade(installed_packages=[], *packages):
+def update(installed_packages=[], *packages):
   '''Upgrade the specified (or all, by default) packages.'''
 
   # TODO:
@@ -142,7 +147,7 @@ def main():
   # FIXME: remove this!
   from pprint import pprint as pp
 
-  args = parse_args()
+  args = arguments.parse()
 
   machine_id = load_machine_id()
   config = load_config()
