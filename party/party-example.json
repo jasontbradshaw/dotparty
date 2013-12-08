@@ -16,7 +16,7 @@
     },
 
     "simple-machine": {
-      "machine": "machine-id-1"
+      "machine": "defaults_to_hostname"
     },
     "multi-machine": {
       "machines": ["machine-id-1", "machine-id-2"]
