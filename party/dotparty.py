@@ -7,19 +7,13 @@ import platform
 from sh import git
 
 import arguments
+import constants
 import util
 
 # NOTE: there's currently no try/except error checking since it clutters the
 # code up mightily - it will be added once the overall structure settles down.
 
-# where the dotparty remote lives, and what it should be called
-DOTPARY_REMOTE = ('dotparty', 'https://github.com/jasontbradshaw/dotparty.git')
-
-MACHINE_ID_FILE_PATH = util.normpath("~/.party-machine")
-USER_CONFIG_PATH = util.normpath("~/.party.json")
-DEFAULT_CONFIG_PATH = util.normpath("./party-default.json")
-
-def load_machine_id(path=MACHINE_ID_FILE_PATH):
+def load_machine_id(path=constants.MACHINE_ID_FILE_PATH):
   '''
   Load the machine id, normalize it, and return it. If there's no machine id
   file, return the hostname of the system. If that's not available, return None.
@@ -41,7 +35,8 @@ def load_machine_id(path=MACHINE_ID_FILE_PATH):
 
   return machine_id
 
-def load_config(user_path=USER_CONFIG_PATH, default_path=DEFAULT_CONFIG_PATH):
+def load_config(user_path=constants.USER_CONFIG_PATH,
+    default_path=constants.DEFAULT_CONFIG_PATH):
   '''Load the default dotparty config file, then overlay the user's on top.'''
 
   # make sure we can load our default config file
