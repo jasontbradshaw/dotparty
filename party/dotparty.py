@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import collections
 import json
 import os
 import platform
@@ -13,7 +14,7 @@ import util
 # NOTE: there's currently no try/except error checking since it clutters the
 # code up mightily - it will be added once the overall structure settles down.
 
-def load_machine_id(path=constants.MACHINE_ID_FILE_PATH):
+def load_machine_id(path=constants.MACHINE_ID_PATH):
   '''
   Load the machine id, normalize it, and return it. If there's no machine id
   file, return the hostname of the system. If that's not available, return None.
@@ -62,9 +63,75 @@ def load_config(user_path=constants.USER_CONFIG_PATH,
   # this because we always need to ignore our own files, and it's cleaner to do
   # so through the normal ignore channel than to write custom checks everywhere.
   if 'ignore' in user_config:
-    config['ignore'] = set(default_config['ignore'] + user_config['ignore'])
+    config['ignore'] = frozenset(default_config['ignore'] + user_config['ignore'])
+
+  # expand globs in the ignored list and root them in the dotparty directory
+  config['ignore'] = frozenset(
+      util.expand_globs(config['ignore'], root=constants.DOTPARTY_DIR))
+
+  # normalize the destination directory
+  config['destination'] = util.normpath(config['destination'])
+
+  # normalize all links to their long form
+  config['links'] = normalize_links(config['links'], config['destination'])
 
   return config
+
+def normalize_links(links, dest):
+  '''De-sugar the link map and turn everything into its long form.'''
+
+  assert isinstance(links, dict)
+
+  normalized_links = {}
+  for link, value in links.iteritems():
+    # the fully-expanded version of all links we'll canonicalize the sugared
+    # links to. for sugary examples, see `party-example.json`.
+    result = {
+      'machines': [],
+      'paths': [],
+    }
+
+    # put simple path strings into the result paths
+    if isinstance(value, basestring):
+      result['paths'].append(value)
+    elif isinstance(value, list):
+      # use the path list as the result paths
+      result['paths'] = value
+    elif isinstance(value, dict):
+      # turn value into a defaultdict that returns None for absent keys
+      value = collections.defaultdict(lambda: None, value)
+
+      # convert the first value that's either a string or a list into a list
+      result['paths'] = util.to_list(value['path'], value['paths'])
+      result['machines'] = util.to_list(value['machine'], value['machines'])
+
+    # if we didn't get a machine, normalize it to the current machine
+    if len(result['machines']) == 0:
+      result['machines'].append(load_machine_id())
+
+    # if we didn't get a path, use the key name prefixed with a dot
+    if len(result['paths']) == 0:
+      result['paths'].append('.' + link)
+
+    # ensure all the values we got are strings
+    assert all(isinstance(f, basestring) for f in result['paths'])
+    assert all(isinstance(f, basestring) for f in result['machines'])
+
+    # normalize all destination paths to the destination directory
+    result['paths'] = [util.normalize_to_root(p, dest) for p in result['paths']]
+
+    # store the normalized result
+    normalized_links[link] = result
+
+  return normalized_links
+
+def path_to_long_form(path, dest):
+  '''Turn a path string into a long-form dict using 'machines' and 'paths'.'''
+
+  return {
+    'machines': [load_machine_id()],
+    'paths': [util.normpath(os.path.basename(path), root=dest)]
+  }
 
 def init():
   '''
@@ -73,24 +140,35 @@ def init():
     $ dotparty install
   '''
 
-def link(src, dest, machine_id, locations=[], ignored=[]):
-  '''Link all the files in the directory to their configured locations.'''
+def link(config):
+  '''Link all files in the dotparty directory to their configured locations.'''
+
+  # get all the files that are immediate children of the base directory, are not
+  # hidden, and are not ignored.
+  links = {}
+  for path in os.listdir(constants.DOTPARTY_DIR):
+    # normalize the path to the dotparty directory
+    path = util.normpath(path, root=constants.DOTPARTY_DIR)
+
+    # if it's not hidden or ignored, add it to the links
+    is_hidden = util.is_hidden(path)
+    is_ignored = path in config['ignore']
+    if not is_hidden and not is_ignored:
+      links[path] = path_to_long_form(path, config['destination'])
+
+  # add explicitly configured files, skipping those not meant for this machine
+  machine_id = load_machine_id()
+  for path, info in config['links'].iteritems():
+    path = util.normalize_to_root(path, constants.DOTPARTY_DIR)
+
+    if machine_id in info['machines']:
+      links[path] = info
+
+  from pprint import pprint as pp
+  pp(links)
 
   # TODO:
-  # - filter out the ignored files
-  # - filter out files that specify another platform
-  # - build a map of the remaining files to their locations
-  # - link those files
-
-  ignored = util.expand_globs(ignored)
-
-  # get all the files that are immediate children of the base directory
-  files = [util.normpath(f, True) for f in os.listdir(src)]
-
-  # filter out hidden files
-  files = filter(lambda f: not os.path.basename(f).startswith('.'), files)
-
-  print ignored, files
+  # - link files
 
 def install(package_or_repo_url, save=False):
   '''Clone a package to the bundle directory and add it to the config file.'''
@@ -144,12 +222,12 @@ def main():
 
   args = arguments.parse()
 
-  machine_id = load_machine_id()
   config = load_config()
 
-  print 'args:', args
-  print 'machine id:', machine_id
-  print 'config: ', config
+  print 'config:',
+  pp(config)
+
+  link(config)
 
 if __name__ == '__main__':
   main()

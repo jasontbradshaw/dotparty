@@ -11,7 +11,8 @@
       "path": ".foo"
     },
 
-    "multi-path": {
+    "multi-path": ["gets/linked", "to/both"],
+    "multi-path-obj": {
       "paths": ["gets/linked", "to/both"]
     },
 
