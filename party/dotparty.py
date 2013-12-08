@@ -132,7 +132,7 @@ def update():
   # - if rebase failed, roll back to the pre-update state and complain with
   #   instructions so for user to do their own update
 
-def update(installed_packages=[], *packages):
+def upgrade(installed_packages=[], *packages):
   '''Upgrade the specified (or all, by default) packages.'''
 
   # TODO:
