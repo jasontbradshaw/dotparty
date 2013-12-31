@@ -125,20 +125,27 @@ def normalize_links(links, dest):
     # normalize all destination paths to the destination directory
     paths = [util.normalize_to_root(p, dest) for p in paths]
 
-    # store the normalized result for this link
-    normalized_links[link] = {
-      'machines': machines,
-      'paths': paths
+    # store the normalized result for this link under its expanded path name
+    normalized_links[util.normalize_to_root(link, constants.DOTPARTY_DIR)] = {
+      'machines': frozenset(machines),
+      'paths': frozenset(paths)
     }
 
   return normalized_links
 
 def path_to_long_form(path, dest):
-  '''Turn a path string into a long-form dict using 'machines' and 'paths'.'''
+  '''
+  Turn a path string into a long-form dict using 'machines' and 'paths'. The
+  destination path will be hidden.
+  '''
+
+  # if we're turning the path into a dot file, rename it with a '.' in front
+  path = util.make_hidden(path)
+  path = util.normalize_to_root(os.path.basename(path), dest)
 
   return {
-    'machines': [load_machine_id()],
-    'paths': [util.normpath(os.path.basename(path), root=dest)]
+    'machines': frozenset([load_machine_id()]),
+    'paths': frozenset([path])
   }
 
 def init():
@@ -151,32 +158,32 @@ def init():
 def link(config):
   '''Link all files in the dotparty directory to their configured locations.'''
 
-  # get all the files that are immediate children of the base directory, are not
-  # hidden, and are not ignored.
+  # add all the files that are immediate children of the base directory, are not
+  # hidden, are not ignored, and do not have a custom config.
   links = {}
   for path in os.listdir(constants.DOTPARTY_DIR):
-    # normalize the path to the dotparty directory
-    path = util.normpath(path, root=constants.DOTPARTY_DIR)
+    path = util.normalize_to_root(path, root=constants.DOTPARTY_DIR)
 
-    # if it's not hidden or ignored, add it to the links
     is_hidden = util.is_hidden(path)
     is_ignored = path in config['ignore']
-    if not is_hidden and not is_ignored:
+    has_custom_config = path in config['links']
+
+    if not is_hidden and not is_ignored and not has_custom_config:
       links[path] = path_to_long_form(path, config['destination'])
 
   # add explicitly configured files, skipping those not meant for this machine
   machine_id = load_machine_id()
   for path, info in config['links'].iteritems():
-    path = util.normalize_to_root(path, constants.DOTPARTY_DIR)
-
     if machine_id in info['machines']:
       links[path] = info
 
-  from pprint import pprint as pp
-  pp(links)
+  # link the files to their destination(s)
+  for link, info in links.iteritems():
+    for path in info['paths']:
+      util.symlink(path, link)
 
-  # TODO:
-  # - link files
+  # return the resulting links, for good measure
+  return links
 
 def install(package_or_repo_url, save=False):
   '''Clone a package to the bundle directory and add it to the config file.'''
@@ -211,7 +218,7 @@ def upgrade():
   # - squash rebase the updates on top as a single commit (for a nice history)
   # - attempt to un-stash the changes
   # - if rebase failed, roll back to the pre-update state and complain with
-  #   instructions so for user to do their own update
+  #   instructions for the user to do their own update
 
 def update(installed_packages=[], *packages):
   '''Update the specified (or all, by default) packages.'''
@@ -232,7 +239,7 @@ def main():
 
   config = load_config()
 
-  print 'config:',
+  print 'config:'
   pp(config)
 
   link(config)
