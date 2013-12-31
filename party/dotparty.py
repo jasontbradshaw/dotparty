@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import unicode_literals
+
 import collections
 import json
 import os
@@ -8,13 +10,14 @@ import platform
 from sh import git
 
 import arguments
+import color
 import constants
 import util
 
 # NOTE: there's currently no try/except error checking since it clutters the
 # code up mightily - it will be added once the overall structure settles down.
 
-def load_machine_id(path=constants.MACHINE_ID_PATH):
+def load_machine_id(machine_file_path=constants.MACHINE_ID_PATH):
   '''
   Load the machine id, normalize it, and return it. If there's no machine id
   file, return the hostname of the system. If that's not available, return None.
@@ -23,8 +26,8 @@ def load_machine_id(path=constants.MACHINE_ID_PATH):
   machine_id = None
 
   # use the machine file if it exists, otherwise fall back on the hostname
-  if os.path.exists(path):
-    with open(path) as f:
+  if os.path.exists(machine_file_path):
+    with open(machine_file_path) as f:
       machine_id = f.read().strip()
   elif platform.node() != '':
     machine_id = platform.node()
@@ -86,42 +89,47 @@ def normalize_links(links, dest):
   for link, value in links.iteritems():
     # the fully-expanded version of all links we'll canonicalize the sugared
     # links to. for sugary examples, see `party-example.json`.
-    result = {
-      'machines': [],
-      'paths': [],
-    }
+    machines = []
+    paths = []
 
     # put simple path strings into the result paths
     if isinstance(value, basestring):
-      result['paths'].append(value)
+      paths.append(value)
     elif isinstance(value, list):
       # use the path list as the result paths
-      result['paths'] = value
+      paths = value
     elif isinstance(value, dict):
       # turn value into a defaultdict that returns None for absent keys
       value = collections.defaultdict(lambda: None, value)
 
       # convert the first value that's either a string or a list into a list
-      result['paths'] = util.to_list(value['path'], value['paths'])
-      result['machines'] = util.to_list(value['machine'], value['machines'])
+      paths = util.to_list(value['path'], value['paths'])
+      machines = util.to_list(value['machine'], value['machines'])
+
+    # make sure we actually got lists out of this process
+    assert isinstance(machines, list)
+    assert isinstance(paths, list)
 
     # if we didn't get a machine, normalize it to the current machine
-    if len(result['machines']) == 0:
-      result['machines'].append(load_machine_id())
+    if len(machines) == 0:
+      machines.append(load_machine_id())
 
     # if we didn't get a path, use the key name prefixed with a dot
-    if len(result['paths']) == 0:
-      result['paths'].append('.' + link)
+    if len(paths) == 0:
+      paths.append('.' + link)
 
     # ensure all the values we got are strings
-    assert all(isinstance(f, basestring) for f in result['paths'])
-    assert all(isinstance(f, basestring) for f in result['machines'])
+    assert all(isinstance(f, basestring) for f in paths)
+    assert all(isinstance(f, basestring) for f in machines)
 
     # normalize all destination paths to the destination directory
-    result['paths'] = [util.normalize_to_root(p, dest) for p in result['paths']]
+    paths = [util.normalize_to_root(p, dest) for p in paths]
 
-    # store the normalized result
-    normalized_links[link] = result
+    # store the normalized result for this link
+    normalized_links[link] = {
+      'machines': machines,
+      'paths': paths
+    }
 
   return normalized_links
 
@@ -191,7 +199,7 @@ def manage(path):
   # - create a link in its original location pointing to its new location
   # - add and commit it to the repo with a standard message
 
-def update():
+def upgrade():
   '''Pull dotparty updates from the upstream repository.'''
 
   # TODO:
@@ -205,8 +213,8 @@ def update():
   # - if rebase failed, roll back to the pre-update state and complain with
   #   instructions so for user to do their own update
 
-def upgrade(installed_packages=[], *packages):
-  '''Upgrade the specified (or all, by default) packages.'''
+def update(installed_packages=[], *packages):
+  '''Update the specified (or all, by default) packages.'''
 
   # TODO:
   # - iterate over all packages in the installed list and pull them, updating

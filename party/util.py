@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import glob
 import os
 import sys
@@ -12,15 +14,12 @@ def to_list(*values):
   list.
   '''
 
-  def v_to_l(v):
-    '''Return a single-item list, or the value if it's already a list.'''
-    if isinstance(value, list):
-      return value
-    return [value]
-
   for value in values:
     if value is not None:
-      return v_to_l(value)
+      # return a single-item list, or the value if it's already a list
+      if isinstance(value, list):
+        return value
+      return [value]
 
   return []
 

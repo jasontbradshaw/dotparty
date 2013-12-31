@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import argparse
 
 def add_init_subparser(subparsers):
@@ -18,11 +20,11 @@ def add_manage_subparser(subparsers):
 
 def add_update_subparser(subparsers):
   p = subparsers.add_parser('update',
-      help='update dotparty to the latest version')
+      help='download updates to dotparty packages')
 
 def add_upgrade_subparser(subparsers):
   p = subparsers.add_parser('upgrade',
-      help='update dotparty to the latest version')
+      help='upgrade dotparty to the latest version')
 
 def parse(args=None, namespace=None):
   '''Set up our arguments and return the parsed namespace.'''

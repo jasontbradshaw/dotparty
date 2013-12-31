@@ -24,6 +24,8 @@
 '''ANSII Color formatting for output in terminal.'''
 
 from __future__ import print_function
+from __future__ import unicode_literals
+
 import os
 
 __ALL__ = [
