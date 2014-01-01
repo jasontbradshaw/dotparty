@@ -6,9 +6,20 @@ import constants
 import dotparty
 import util
 
+def add_debug_argument(parser):
+  '''Add a --debug flag to a parser.'''
+
+  parser.add_argument(
+    '--debug',
+    action='store_true',
+    help='enable debug output'
+  )
+
 def add_init_subparser(subparsers):
   p = subparsers.add_parser('init',
       help='initialize a new computer with dotfiles')
+
+  add_debug_argument(p)
 
   p.add_argument(
     '-f', '--force',
@@ -21,6 +32,8 @@ def add_init_subparser(subparsers):
 def add_link_subparser(subparsers):
   p = subparsers.add_parser('link',
       help='link dotfiles into the destination directory')
+
+  add_debug_argument(p)
 
   p.add_argument(
     '-f', '--force',
@@ -40,6 +53,8 @@ def add_install_subparser(subparsers):
   p = subparsers.add_parser('install',
       help='install the current configured packages')
 
+  add_debug_argument(p)
+
   p.add_argument(
     'package',
     type=util.normpath,
@@ -53,6 +68,8 @@ def add_manage_subparser(subparsers):
   p = subparsers.add_parser('manage',
       help=('copy a file to the dotpary directory, replace the original '
           'with a link, and add the new file to the repo (if possible)'))
+
+  add_debug_argument(p)
 
   p.add_argument(
     'path',
@@ -72,6 +89,8 @@ def add_update_subparser(subparsers):
   p = subparsers.add_parser('update',
       help='download updates to installed packages')
 
+  add_debug_argument(p)
+
   p.add_argument(
     'package',
     nargs='*',
@@ -83,12 +102,15 @@ def add_update_subparser(subparsers):
 def add_upgrade_subparser(subparsers):
   p = subparsers.add_parser('upgrade',
       help='upgrade dotparty to the latest version')
+  add_debug_argument(p)
   p.set_defaults(command=dotparty.upgrade)
 
 def parse(args=None, namespace=None):
   '''Set up our arguments and return the parsed namespace.'''
 
   p = argparse.ArgumentParser(prog='dotparty')
+
+  add_debug_argument(p)
 
   p.add_argument(
     '--version',
