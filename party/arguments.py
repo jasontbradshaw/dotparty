@@ -8,42 +8,42 @@ import util
 
 def add_init_subparser(subparsers):
   p = subparsers.add_parser('init',
-      help='Initialize a new computer with dotfiles')
+      help='initialize a new computer with dotfiles')
 
   p.add_argument(
     '-f', '--force',
     action='store_true',
-    help='Overwrite existing files at link destinations'
+    help='overwrite existing files at link destinations'
   )
 
   p.set_defaults(command=dotparty.init)
 
 def add_link_subparser(subparsers):
   p = subparsers.add_parser('link',
-      help='Link dotfiles into the destination directory')
+      help='link dotfiles into the destination directory')
 
   p.add_argument(
     '-f', '--force',
     action='store_true',
-    help='Overwrite existing files at link destinations'
+    help='overwrite existing files at link destinations'
   )
 
   p.add_argument(
     '-t', '--test',
     action='store_true',
-    help="Don't actually create destination links (useful for testing)"
+    help="don't actually create destination links (useful for testing)"
   )
 
   p.set_defaults(command=dotparty.link)
 
 def add_install_subparser(subparsers):
   p = subparsers.add_parser('install',
-      help='Install the current configured packages')
+      help='install the current configured packages')
 
   p.add_argument(
     'package',
     type=util.normpath,
-    help=('The package to install. Can be a short GitHub link (user/repo), '
+    help=('the package to install. Can be a short GitHub link (user/repo), '
         'or a fully-qualified Git repo URL.')
   )
 
@@ -51,37 +51,38 @@ def add_install_subparser(subparsers):
 
 def add_manage_subparser(subparsers):
   p = subparsers.add_parser('manage',
-      help='Move a file to the dotpary directory and leave a link in its place')
+      help=('copy a file to the dotpary directory, replace the original '
+          'with a link, and add the new file to the repo (if possible)'))
 
   p.add_argument(
     'path',
     type=util.normpath,
-    help='The source file to manage'
+    help='the path to the source file to manage'
   )
 
   p.add_argument(
     '-f', '--force',
     action='store_true',
-    help='Overwrite any existing files in the dotparty directory'
+    help='overwrite any existing files in the dotparty directory'
   )
 
   p.set_defaults(command=dotparty.manage)
 
 def add_update_subparser(subparsers):
   p = subparsers.add_parser('update',
-      help='Download updates to installed packages')
+      help='download updates to installed packages')
 
   p.add_argument(
     'package',
     nargs='*',
-    help='The package(s) to update, all if none are specified'
+    help='the package(s) to update, all if none are specified'
   )
 
   p.set_defaults(command=dotparty.update)
 
 def add_upgrade_subparser(subparsers):
   p = subparsers.add_parser('upgrade',
-      help='Upgrade dotparty to the latest version')
+      help='upgrade dotparty to the latest version')
   p.set_defaults(command=dotparty.upgrade)
 
 def parse(args=None, namespace=None):
