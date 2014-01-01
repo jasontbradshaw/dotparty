@@ -5,6 +5,9 @@ import os
 
 import util
 
+# the current version of dotparty
+VERSION = (0, 0, 0)
+
 # where the dotparty remote lives, and what it should be called
 GitRemote = collections.namedtuple('Remote', ['name', 'url'])
 DOTPARY_REMOTE = GitRemote('dotparty',

@@ -2,6 +2,9 @@
 
 from __future__ import unicode_literals
 
+# FIXME: remove this!
+from pprint import pprint as pp
+
 import collections
 import json
 import os
@@ -148,14 +151,14 @@ def path_to_long_form(path, dest):
     'paths': frozenset([path])
   }
 
-def init():
+def init(config, args):
   '''
   Initialize dotparty on a new machine. Essentially an alias for:
     $ dotparty link
     $ dotparty install
   '''
 
-def link(config):
+def link(config, args):
   '''Link all files in the dotparty directory to their configured locations.'''
 
   # add all the files that are immediate children of the base directory, are not
@@ -177,15 +180,44 @@ def link(config):
     if machine_id in info['machines']:
       links[path] = info
 
+  # find the longest link basename for pretty output formatting
+  max_src_width = max(len(os.path.basename(k)) for k in links.keys())
+  link_symbol = ' -> '
+
   # link the files to their destination(s)
-  for link, info in links.iteritems():
-    for path in info['paths']:
-      util.symlink(path, link)
+  for src, info in links.iteritems():
+    msg = os.path.basename(src).rjust(max_src_width)
+    msg += color.grey(link_symbol)
+
+    for i, dest in enumerate(info['paths']):
+      # the color of the link destination, different when we're creating a new
+      # link, overwriting a link, and overwriting a normal file.
+      dest_color = 'green'
+      if os.path.lexists(dest):
+        dest_color = 'cyan'
+        if not os.path.islink(dest):
+          dest_color = 'yellow'
+
+      # do the symlink unless we're doing a dry run
+      if not args.test:
+        # overwrite links only by default, everything if forcing
+        overwrite = True if args.force else None
+        util.symlink(dest, src, overwrite=overwrite)
+
+      # pad the left space if we're not the first item, since items with
+      # multiple destinations are all under the same link name and symbol.
+      if i > 0:
+        msg += os.linesep
+        msg += ' ' * (max_src_width + len(link_symbol))
+
+      msg += color.colored(dest, dest_color)
+
+    print msg
 
   # return the resulting links, for good measure
   return links
 
-def install(package_or_repo_url, save=False):
+def install(config, args):
   '''Clone a package to the bundle directory and add it to the config file.'''
 
   # TODO:
@@ -194,7 +226,7 @@ def install(package_or_repo_url, save=False):
   # - add the package to the config if --save is specifed
   # - clone it to the package directory
 
-def manage(path):
+def manage(config, args):
   '''
   Move a file to the base directory and create a link pointing to its original
   location.
@@ -206,7 +238,7 @@ def manage(path):
   # - create a link in its original location pointing to its new location
   # - add and commit it to the repo with a standard message
 
-def upgrade():
+def upgrade(config, args):
   '''Pull dotparty updates from the upstream repository.'''
 
   # TODO:
@@ -220,7 +252,7 @@ def upgrade():
   # - if rebase failed, roll back to the pre-update state and complain with
   #   instructions for the user to do their own update
 
-def update(installed_packages=[], *packages):
+def update(config, args):
   '''Update the specified (or all, by default) packages.'''
 
   # TODO:
@@ -232,17 +264,12 @@ def main():
   # make sure the user has the correct python version installed
   util.ensure_python_version()
 
-  # FIXME: remove this!
-  from pprint import pprint as pp
-
   args = arguments.parse()
 
   config = load_config()
 
-  print 'config:'
-  pp(config)
-
-  link(config)
+  # call the subcommand the user specified with the config and arguments
+  args.command(config, args)
 
 if __name__ == '__main__':
   main()

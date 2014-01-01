@@ -74,7 +74,7 @@ COLORS = {
 
 RESET = '\033[0m'
 
-FMT_STR = '\033[%dm%s'
+FORMAT_STRING = '\033[%dm%s'
 
 ANSI_COLORS_DISABLED = os.getenv('ANSI_COLORS_DISABLED')
 
@@ -98,14 +98,14 @@ def colored(text, color=None, on=None, attrs=None):
 
     if ANSI_COLORS_DISABLED is None:
         if color is not None:
-            text = FMT_STR % (COLORS[color], text)
+            text = FORMAT_STRING % (COLORS[color], text)
 
         if on is not None:
-            text = FMT_STR % (HIGHLIGHTS[on], text)
+            text = FORMAT_STRING % (HIGHLIGHTS[on], text)
 
         if attrs is not None:
             for attr in attrs:
-                text = FMT_STR % (ATTRIBUTES[attr], text)
+                text = FORMAT_STRING % (ATTRIBUTES[attr], text)
 
         text += RESET
 
