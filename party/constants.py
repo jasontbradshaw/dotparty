@@ -8,7 +8,8 @@ import util
 # the current version of dotparty
 VERSION = (0, 0, 0)
 
-# where the dotparty remote lives, and what it should be called
+# the git remote where the dotparty repository lives. used for updating dotparty
+# to the latest version.
 GitRemote = collections.namedtuple('Remote', ['name', 'url'])
 DOTPARY_REMOTE = GitRemote('dotparty',
     'https://github.com/jasontbradshaw/dotparty.git')

@@ -21,7 +21,7 @@ import util
 def init(conf, args):
   '''
   Initialize dotparty on a new machine. Essentially an alias for:
-    $ dotparty link
+    $ dotparty link --force
     $ dotparty install
   '''
 
@@ -32,7 +32,7 @@ def link(conf, args):
   # hidden, are not ignored, and do not have a custom config.
   links = {}
   for path in os.listdir(constants.DOTPARTY_DIR):
-    path = util.normalize_to_root(path, root=constants.DOTPARTY_DIR)
+    path = util.normalize_to_root(path, constants.DOTPARTY_DIR)
 
     is_hidden = util.is_hidden(path)
     is_ignored = path in conf['ignore']
@@ -81,11 +81,11 @@ def link(conf, args):
 
     print msg
 
-  # return the resulting links, for good measure
+  # return the created links
   return links
 
 def install(conf, args):
-  '''Clone a package to the bundle directory and add it to the config file.'''
+  '''Clone a package to the packages directory.'''
 
   # TODO:
   # - determine whether we're dealing with a repo URL or a github reference
@@ -100,13 +100,14 @@ def manage(conf, args):
   '''
 
   # TODO:
-  # - check if the file is an already-managed link, bail if so
-  # - move the file to the base directory
+  # - check if the file is already managed, and bail if so
+  # - copy the file or directory to the base directory
   # - create a link in its original location pointing to its new location
+  # - determine whether the git repo is clean
   # - add and commit it to the repo with a standard message
 
 def upgrade(conf, args):
-  '''Pull dotparty updates from the upstream repository.'''
+  '''Apply dotparty updates from the upstream repository.'''
 
   # TODO:
   # - see if there's an upstream ref that matches the canonical repo
@@ -128,7 +129,7 @@ def update(conf, args):
   # - do the whole stash/rebase/pop dance during the update
 
 def main():
-  # make sure the user has the correct python version installed
+  # make sure the user has the correct versions of required software installed
   util.ensure_python_version()
   util.ensure_git_version()
 
