@@ -3,10 +3,12 @@ from __future__ import unicode_literals
 import errno
 import glob
 import os
+import re
 import shutil
 import sys
 
-import constants
+# groups version numbers from strings like 'git version 1.8.3.2'
+GIT_VERSION_REGEX = re.compile('(\d+(?:\.\d+)+)')
 
 def to_list(*values):
   '''
@@ -132,9 +134,42 @@ def symlink(link_dest, src, overwrite=None):
   mkdirp(os.path.dirname(link_dest))
   os.symlink(src, link_dest)
 
-def ensure_python_version(version=(2,7)):
-  '''Ensure that we're using the minimum required Python version.'''
+def ensure_version(prog, min_version, version):
+  '''
+  Ensure that the version tuple exceeds the min_version tuple, otherwise raise a
+  ValueError.
+  '''
 
-  if sys.version_info < version:
-    msg = 'dotparty requires Python version {0} or later!'
-    raise ValueError(msg.format('.'.join(version)))
+  if version < min_version:
+    msg = 'dotparty requires {0} version {1} or later to function, found {2}'
+    msg = msg.format(prog,
+      '.'.join(map(unicode, min_version)),
+      '.'.join(map(unicode, version)),
+    )
+    raise ValueError(msg)
+
+def ensure_python_version(min_version=(2,7)):
+  '''Ensure that we're using the minimum required Python version.'''
+  ensure_version('Python', min_version, sys.version_info)
+
+def ensure_git_version(min_version=(1, 8)):
+  '''Ensure that we have access to the minimum required Git version.'''
+
+  # TODO: determine what the minimum supported Git version is
+
+  try:
+    from sh import git
+  except ImportError:
+    raise ValueError("'git' is required for dotparty to function")
+
+  # parse out the version info
+  raw = git.version().strip()
+  match = GIT_VERSION_REGEX.search(raw)
+
+  if not match:
+    print match
+    raise ValueError("Could not parse version info from output: '%s'" % raw)
+
+  # parse the version match like "1.2.3.4" into a tuple like (1, 2, 3, 4)
+  version = tuple(int(i) for i in match.group(1).split('.'))
+  ensure_version('Git', min_version, version)

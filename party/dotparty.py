@@ -130,9 +130,9 @@ def update(conf, args):
 def main():
   # make sure the user has the correct python version installed
   util.ensure_python_version()
+  util.ensure_git_version()
 
   args = arguments.parse()
-
   conf = config.load_config()
 
   # call the subcommand the user specified with the config and arguments
