@@ -107,7 +107,7 @@ def symlink(link_dest, src, overwrite=None):
   link_dest = normpath(link_dest)
   src = normpath(src)
 
-  link_dest_exists = os.path.exists(link_dest)
+  link_dest_exists = os.path.lexists(link_dest)
   link_dest_is_link = os.path.islink(link_dest)
 
   # handle our error states
