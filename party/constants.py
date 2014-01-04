@@ -9,7 +9,7 @@ VERSION = (0, 0, 0)
 
 # the git remote where the dotparty repository lives. used for updating dotparty
 # to the latest version.
-DOTPARY_REMOTE = 'https://github.com/jasontbradshaw/dotparty.git'
+DOTPARTY_REMOTE = 'https://github.com/jasontbradshaw/dotparty.git'
 
 # the directories that the dotparty files and script live in
 # NOTE: these assume that these files are within the script directory!
