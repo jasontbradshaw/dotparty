@@ -15,20 +15,6 @@ def add_debug_argument(parser):
     help='enable debug output'
   )
 
-def add_init_subparser(subparsers):
-  p = subparsers.add_parser('init',
-      help='initialize a new computer with dotfiles')
-
-  add_debug_argument(p)
-
-  p.add_argument(
-    '-f', '--force',
-    action='store_true',
-    help='overwrite existing files at link destinations'
-  )
-
-  p.set_defaults(command=dotparty.init)
-
 def add_link_subparser(subparsers):
   p = subparsers.add_parser('link',
       help='link dotfiles into the destination directory')
@@ -120,7 +106,6 @@ def parse(args=None, namespace=None):
   subparsers = p.add_subparsers(title='commands')
 
   # add the commands available on the base argument parser
-  add_init_subparser(subparsers)
   add_link_subparser(subparsers)
   add_install_subparser(subparsers)
   add_manage_subparser(subparsers)

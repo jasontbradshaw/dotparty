@@ -21,13 +21,6 @@ import util
 # NOTE: there's currently no try/except error checking since it clutters the
 # code up mightily - it will be added once the overall structure settles down.
 
-def init(conf, args):
-  '''
-  Initialize dotparty on a new machine. Essentially an alias for:
-    $ dotparty link --force
-    $ dotparty install
-  '''
-
 def link(conf, args):
   '''Link all files in the dotparty directory to their configured locations.'''
 
