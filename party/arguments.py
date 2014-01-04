@@ -57,7 +57,6 @@ def add_install_subparser(subparsers):
 
   p.add_argument(
     'package',
-    type=util.normpath,
     help=('the package to install. Can be a short GitHub link (user/repo), '
         'or a fully-qualified Git repo URL.')
   )
@@ -73,7 +72,7 @@ def add_manage_subparser(subparsers):
 
   p.add_argument(
     'path',
-    type=util.normpath,
+    type=lambda p: util.normpath(p, absolute=True),
     help='the path to the source file to manage'
   )
 

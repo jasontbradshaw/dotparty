@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
 from __future__ import unicode_literals
+from __future__ import print_function
 
 # FIXME: remove this!
 from pprint import pprint as pp
 
 import os
+import shutil
+import sys
 
 from sh import git
 
@@ -79,7 +82,7 @@ def link(conf, args):
 
       msg += color.colored(dest, dest_color)
 
-    print msg
+    print(msg)
 
   # return the created links
   return links
@@ -90,7 +93,7 @@ def install(conf, args):
   # TODO:
   # - determine whether we're dealing with a repo URL or a github reference
   # - build a URL if we weren't given one
-  # - add the package to the config if --save is specifed
+  # - add the package to the config if --save is specified
   # - clone it to the package directory
 
 def manage(conf, args):
@@ -99,12 +102,48 @@ def manage(conf, args):
   location.
   '''
 
+  # make sure the path is a descendant of the destination directory
+  if not util.is_descendant(args.path, conf['destination']):
+    raise ValueError("Unable to manage files that aren't descendants of " +
+        'the destination directory (' + color.cyan(conf['destination']) + ')')
+
+  # TODO: handle managing files that AREN'T in the root of the destination dir
+  if os.path.dirname(args.path) != conf['destination']:
+    raise ValueError("Unable to manage files that aren't direct descendants " +
+        'of the destination directory (' + color.cyan(conf['destination']) + ')')
+
+  # get the path of the file if it will be copied into the dotparty directory.
+  # the managed file will NOT be hidden, even if the original was.
+  dotparty_path = os.path.join(constants.DOTPARTY_DIR,
+      os.path.basename(args.path))
+  dotparty_path = util.toggle_hidden(util.normpath(dotparty_path), False)
+
+  # bail if the file is already managed and we're not overwriting
+  if os.path.exists(dotparty_path) and not args.force:
+    raise ValueError("Can't manage " + color.cyan(args.path) +
+        " since it already exists (use --force to override)")
+
+  # remove the destination file since we'll be overwriting it
+  util.rm(dotparty_path, force=True)
+
+  # copy the file to its new location
+  util.cp(args.path, dotparty_path, recursive=True)
+
+  # create a link to the new location, overwriting the old file
+  util.symlink(args.path, dotparty_path, overwrite=True)
+
+  print(color.cyan(args.path), 'copied and linked')
+
   # TODO:
-  # - check if the file is already managed, and bail if so
-  # - copy the file or directory to the base directory
-  # - create a link in its original location pointing to its new location
-  # - determine whether the git repo is clean
-  # - add and commit it to the repo with a standard message
+  # - add and commit the file to the repo
+
+  # # move us to the current dotparty directory so all git commands start there
+  # os.chdir(constants.DOTPARTY_DIR)
+
+  # # alert the user if we have uncommitted changes (git exits non-0 in this case)
+  # if git.diff(exit_code=True, quiet=True, _ok_code=(0, 1)).exit_code != 0:
+  #   print('dotparty repo has uncommitted changes - the newly-managed file',
+  #       'will have to be added to the repo manually', file=sys.stderr)
 
 def upgrade(conf, args):
   '''Apply dotparty updates from the upstream repository.'''
@@ -130,14 +169,22 @@ def update(conf, args):
 
 def main():
   # make sure the user has the correct versions of required software installed
-  util.ensure_python_version()
-  util.ensure_git_version()
+  util.ensure_required_software()
 
   args = arguments.parse()
   conf = config.load_config()
 
   # call the subcommand the user specified with the config and arguments
-  args.command(conf, args)
+  try:
+    args.command(conf, args)
+  except Exception, e:
+    # raise the full exeption if debug is enabled
+    if args.debug:
+      raise
+
+    # if we encounter an exception, print it and exit with an error
+    print(color.red('[error]'), e, file=sys.stderr)
+    sys.exit(1)
 
 if __name__ == '__main__':
   main()

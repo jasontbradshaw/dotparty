@@ -134,7 +134,7 @@ def path_to_long_form(path, dest):
   '''
 
   # if we're turning the path into a dot file, rename it with a '.' in front
-  path = util.make_hidden(path)
+  path = util.toggle_hidden(path, True)
   path = util.normalize_to_root(os.path.basename(path), dest)
 
   return {

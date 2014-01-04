@@ -10,6 +10,49 @@ import sys
 # groups version numbers from strings like 'git version 1.8.3.2'
 GIT_VERSION_REGEX = re.compile('(\d+(?:\.\d+)+)')
 
+def mkdir(path, mode=0o0755):
+  '''Create a directory, analogous to `mkdir -p`. mode defaults to 0755.'''
+
+  try:
+    os.makedirs(path, mode)
+  except OSError, e:
+    if e.errno == errno.EEXIST and os.path.isdir(path):
+      pass
+    else:
+      raise
+
+def rm(path, force=False):
+  '''
+  Remove a file. If force is True, can also remove a directory. Doesn't complain
+  about non-existent directories.
+  '''
+
+  try:
+    # try to remove it as a simple file
+    os.remove(path)
+  except OSError, e:
+    # if we're not forcing, fail
+    if not force and e.errno != errno.ENOENT:
+      raise
+
+    # attempt to remove it as a directory if the error wasn't caused by the
+    # directory not existing.
+    if e.errno != errno.ENOENT:
+      try:
+        shutil.rmtree(path)
+      except OSError, e:
+        # only raise the exception if it's NOT a non-existence exeption, since
+        # force implies that we don't care.
+        if e.errno != errno.ENOENT:
+          raise
+
+def cp(src, dest, recursive=False):
+  '''Copy a file, or directory tree if recursive is True. Copys permissions.'''
+  if recursive and os.path.isdir(src):
+    shutil.copytree(src, dest)
+  else:
+    shutil.copy2(src, dest)
+
 def to_list(*values):
   '''
   Given any number of values, return the first non-None one as a list. If that
@@ -56,10 +99,21 @@ def is_hidden(path):
   '''Return True if the file is hidden, False otherwise.'''
   return os.path.basename(path).startswith('.')
 
-def make_hidden(path):
+def toggle_hidden(path, hide):
   '''Turn a path into a hidden file.'''
+
   parts = list(os.path.split(path))
-  parts[-1] = '.' + parts[-1]
+
+  # remove any leading dot from the file
+  base = parts.pop()
+  base = base[1:] if base[0] == '.' else base
+
+  # add the dot back if we're hiding the file
+  if hide:
+    base = '.' + base
+
+  # put the base back on the parts list and return the joined path
+  parts.append(base)
   return os.path.join(*parts)
 
 def expand_globs(files, root=None):
@@ -82,17 +136,6 @@ def expand_globs(files, root=None):
       expanded.add(f)
 
   return sorted(expanded)
-
-def mkdirp(path, mode=0o0755):
-  '''Create a directory, analogous to `mkdir -p`. mode defaults to 0755.'''
-
-  try:
-    os.makedirs(path, mode)
-  except OSError, e:
-    if e.errno == errno.EEXIST and os.path.isdir(path):
-      pass
-    else:
-      raise
 
 def symlink(link_dest, src, overwrite=None):
   '''
@@ -121,18 +164,16 @@ def symlink(link_dest, src, overwrite=None):
 
   # remove the link file, since at this point we're allowed to in all cases
   if link_dest_exists:
-    try:
-      # try to remove it as a simple file
-      os.remove(link_dest)
-    except OSError, e:
-      try:
-        shutil.rmtree(link_dest)
-      except OSError, e:
-        raise
+    rm(link_dest, force=True)
 
   # create the link and all the directories needed to contain it
-  mkdirp(os.path.dirname(link_dest))
+  mkdir(os.path.dirname(link_dest))
   os.symlink(src, link_dest)
+
+def is_descendant(child, parent):
+  '''Returns True if child is a descendant directory of parent, else False.'''
+  common_prefix = os.path.commonprefix((parent, child))
+  return common_prefix == parent
 
 def ensure_version(prog, min_version, version):
   '''
@@ -173,3 +214,8 @@ def ensure_git_version(min_version=(1, 8)):
   # parse the version match like "1.2.3.4" into a tuple like (1, 2, 3, 4)
   version = tuple(int(i) for i in match.group(1).split('.'))
   ensure_version('Git', min_version, version)
+
+def ensure_required_software():
+  '''Make sure that we have access to all the required software/versions.'''
+  ensure_python_version()
+  ensure_git_version()
