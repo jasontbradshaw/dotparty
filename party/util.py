@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import errno
 import glob
@@ -15,7 +16,7 @@ def mkdir(path, mode=0o0755):
 
   try:
     os.makedirs(path, mode)
-  except OSError, e:
+  except OSError as e:
     if e.errno == errno.EEXIST and os.path.isdir(path):
       pass
     else:
@@ -30,7 +31,7 @@ def rm(path, force=False):
   try:
     # try to remove it as a simple file
     os.remove(path)
-  except OSError, e:
+  except OSError as e:
     # if we're not forcing, fail
     if not force and e.errno != errno.ENOENT:
       raise
@@ -40,14 +41,14 @@ def rm(path, force=False):
     if e.errno != errno.ENOENT:
       try:
         shutil.rmtree(path)
-      except OSError, e:
+      except OSError as e:
         # only raise the exception if it's NOT a non-existence exeption, since
         # force implies that we don't care.
         if e.errno != errno.ENOENT:
           raise
 
 def cp(src, dest, recursive=False):
-  '''Copy a file, or directory tree if recursive is True. Copys permissions.'''
+  '''Copy a file, or directory tree if recursive is True. Copies permissions.'''
   if recursive and os.path.isdir(src):
     shutil.copytree(src, dest)
   else:
@@ -208,7 +209,7 @@ def ensure_git_version(min_version=(1, 8)):
   match = GIT_VERSION_REGEX.search(raw)
 
   if not match:
-    print match
+    print(match)
     raise ValueError("Could not parse version info from output: '%s'" % raw)
 
   # parse the version match like "1.2.3.4" into a tuple like (1, 2, 3, 4)

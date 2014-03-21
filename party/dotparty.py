@@ -18,9 +18,6 @@ import config
 import constants
 import util
 
-# NOTE: there's currently no try/except error checking since it clutters the
-# code up mightily - it will be added once the overall structure settles down.
-
 def link(conf, args):
   '''Link all files in the dotparty directory to their configured locations.'''
 
@@ -128,7 +125,8 @@ def manage(conf, args):
   print(color.cyan(args.path), 'copied and linked')
 
   # TODO:
-  # - add and commit the file to the repo
+  # - add and commit the file to the repo if --save is specified
+  # - modify the config for the new file if necessary
 
   # # move us to the current dotparty directory so all git commands start there
   # os.chdir(constants.DOTPARTY_DIR)
@@ -138,22 +136,42 @@ def manage(conf, args):
   #   print('dotparty repo has uncommitted changes - the newly-managed file',
   #       'will have to be added to the repo manually', file=sys.stderr)
 
-def upgrade(conf, args):
+def update(conf, args):
   '''Apply dotparty updates from the upstream repository.'''
 
+  print('Checking for updates...')
+
+  # fetch changes from the canonical repo
+  git.fetch(constants.DOTPARTY_REMOTE, no_tags=True)
+
+  # get a list of the commit messages for the incoming changes
+  updates = git.log('..FETCH_HEAD', oneline=True).splitlines()
+  updates = tuple(m.split(None, 1) for m in updates)
+
+  # print out a list of the incoming updates
+  if len(updates) > 0:
+    print('There are updates available:')
+
+    max_updates = 10
+    for commit, msg in updates[:max_updates]:
+      print(color.yellow('*'), msg)
+
+    # print a special message if too many updates are available
+    if len(updates) > max_updates:
+      print('...and %d more!' % (len(updates) - max_updates))
+      print('Run `git log ..FETCH_HEAD` to see the full list')
+  else:
+    print('Already up-to-date!')
+
   # TODO:
-  # - see if there's an upstream ref that matches the canonical repo
-  # - add a new ref if there isn't one, generating a random name if necessary
-  # - fetch updates from the upstream ref
-  # - list the changes, truncating the list if it's too long
   # - stash current modifications to the repo
   # - squash rebase the updates on top as a single commit (for a nice history)
   # - attempt to un-stash the changes
   # - if rebase failed, roll back to the pre-update state and complain with
   #   instructions for the user to do their own update
 
-def update(conf, args):
-  '''Update the specified (or all, by default) packages.'''
+def upgrade(conf, args):
+  '''Upgrade the specified (or all, by default) packages.'''
 
   # TODO:
   # - iterate over all packages in the installed list and pull them, updating
@@ -170,7 +188,7 @@ def main():
   # call the subcommand the user specified with the config and arguments
   try:
     args.command(conf, args)
-  except Exception, e:
+  except Exception as e:
     # raise the full exeption if debug is enabled
     if args.debug:
       raise
