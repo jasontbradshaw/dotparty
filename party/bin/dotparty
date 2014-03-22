@@ -16,4 +16,5 @@ DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 # get the path to the script
 PROG="${DIR}/../dotparty.py"
 
-$PROG $@
+# TODO: make this work bare, sans the 'python2' call
+python2 $PROG $@

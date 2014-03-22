@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import argparse
 
@@ -100,7 +101,7 @@ def parse(args=None, namespace=None):
   p.add_argument(
     '--version',
     action='version',
-    version=('%(prog)s version ' + '.'.join(map(unicode, constants.VERSION)))
+    version=('%(prog)s version ' + '.'.join(map(str, constants.VERSION)))
   )
 
   subparsers = p.add_subparsers(title='commands')

@@ -8,9 +8,6 @@ import platform
 import constants
 import util
 
-# NOTE: there's currently no try/except error checking since it clutters the
-# code up mightily - it will be added once the overall structure settles down.
-
 def get_machine_id(machine_file_path=constants.MACHINE_ID_PATH):
   '''
   Load the machine id, normalize it, and return it. If there's no machine id
@@ -22,7 +19,7 @@ def get_machine_id(machine_file_path=constants.MACHINE_ID_PATH):
   # use the machine file if it exists, otherwise fall back on the hostname
   if os.path.exists(machine_file_path):
     with open(machine_file_path) as f:
-      machine_id = f.read().strip()
+      machine_id = json.load(f)['id']
   elif platform.node() != '':
     machine_id = platform.node()
 
@@ -32,6 +29,17 @@ def get_machine_id(machine_file_path=constants.MACHINE_ID_PATH):
       machine_id = machine_id[:-len(local_suffix)]
 
   return machine_id
+
+def machine_matches(machine_id, machines):
+  '''
+  Test a machine id against a list of machines, and return whether the given id
+  matches against the list.
+
+  A machine matches if either the machines list is empty (indicating 'all
+  machines'), or the given id exists in the machines list.
+  '''
+
+  return len(machines) == 0 or machine_id in machines
 
 def load_config(user_path=constants.USER_CONFIG_PATH,
     default_path=constants.DEFAULT_CONFIG_PATH):
@@ -51,7 +59,7 @@ def load_config(user_path=constants.USER_CONFIG_PATH,
     with open(user_path) as f:
       user_config = json.load(f)
 
-  # build a final config of the default values custom-merged with the user's
+  # build a config of the default values custom-merged with the user's
   config = {}
   config.update(default_config)
   config.update(user_config)
@@ -69,75 +77,127 @@ def load_config(user_path=constants.USER_CONFIG_PATH,
   # normalize the destination directory
   config['destination'] = util.normpath(config['destination'])
 
-  # normalize all links to their long form
-  config['links'] = normalize_links(config['links'], config['destination'])
+  # TODO: handle packages
 
   return config
 
-def normalize_links(links, dest):
-  '''De-sugar the link map and turn everything into its long form.'''
+def get_config_path(path):
+  '''Return the config file name for a given path.'''
+  base, name = os.path.split(path)
+  hidden_name = util.toggle_hidden(name, True)
+  return os.path.join(base, hidden_name)
 
-  assert isinstance(links, dict)
+def normalize_file_config(config, dest):
+  '''Turn a file config into a normalized variant.'''
 
-  normalized_links = {}
-  for link, value in links.iteritems():
-    # the fully-expanded version of all links we'll canonicalize the sugared
-    # links to. for sugary examples, see `party-example.json`.
-    machines = []
-    paths = []
-
-    # put simple path strings into the result paths
-    if isinstance(value, basestring):
-      paths.append(value)
-    elif isinstance(value, list):
-      # use the path list as the result paths
-      paths = value
-    elif isinstance(value, dict):
-      # turn value into a defaultdict that returns None for absent keys
-      value = collections.defaultdict(lambda: None, value)
-
-      # convert the first value that's either a string or a list into a list
-      paths = util.to_list(value['path'], value['paths'])
-      machines = util.to_list(value['machine'], value['machines'])
-
-    # make sure we actually got lists out of this process
-    assert isinstance(machines, list)
-    assert isinstance(paths, list)
-
-    # if we didn't get a machine, normalize it to the current machine
-    if len(machines) == 0:
-      machines.append(get_machine_id())
-
-    # if we didn't get a path, use the key name prefixed with a dot
-    if len(paths) == 0:
-      paths.append('.' + link)
-
-    # ensure all the values we got are strings
-    assert all(isinstance(f, basestring) for f in paths)
-    assert all(isinstance(f, basestring) for f in machines)
-
-    # normalize all destination paths to the destination directory
-    paths = [util.normalize_to_root(p, dest) for p in paths]
-
-    # store the normalized result for this link under its expanded path name
-    normalized_links[util.normalize_to_root(link, constants.DOTPARTY_DIR)] = {
-      'machines': frozenset(machines),
-      'paths': frozenset(paths)
-    }
-
-  return normalized_links
-
-def path_to_long_form(path, dest):
-  '''
-  Turn a path string into a long-form dict using 'machines' and 'paths'. The
-  destination path will be hidden.
-  '''
-
-  # if we're turning the path into a dot file, rename it with a '.' in front
-  path = util.toggle_hidden(path, True)
-  path = util.normalize_to_root(os.path.basename(path), dest)
-
-  return {
-    'machines': frozenset([get_machine_id()]),
-    'paths': frozenset([path])
+  # an empty config with all the expected keys
+  result = {
+    'paths': [],
+    'machines': [],
   }
+
+  if 'paths' in config:
+    # normalize all paths names to our destination directory
+    paths = [util.normalize_to_root(p, dest) for p in set(config['paths'])]
+    result['paths'] = sorted(paths)
+
+  if 'machines' in config:
+    result['machines'] = sorted(frozenset(config['machines']))
+
+  return result
+
+def load_file_config_file(path, dest):
+  '''
+  Load the config for the given path if it exists, otherwise return None.
+
+  Config File Format
+  ----
+
+  ```json
+  {
+    "machines": [
+      "machineid1",
+      "machineid2"
+    ],
+
+    "paths": [
+      "relative/path/1",
+      "relative/path/2"
+    ]
+  }
+  ```
+
+  Keys may be omitted, but beware: an empty `paths` list will result in the
+  file never being linked!
+  '''
+
+  # if a config file exists, return its JSON contents
+  config_path = get_config_path(path)
+  if os.path.isfile(config_path):
+    config = None
+    with open(config_path, 'r') as f:
+      return normalize_file_config(json.load(f), dest)
+
+  # otherwise, signal that no file existed
+  return None
+
+def parse_file_config(path, dest):
+  '''
+  Parse the given file name and return a normalized config.
+
+  Naming Rules
+  ----
+
+  * First leading '_' is replaced with a '.'.
+  * When split on '@', every part excluding the first is treated as a machine id
+  on which to link the given file.
+  * Any file named the same as the local file preceded by a '.' is treated as a
+    special config file for that local file.
+  * Any of these rules may be combined.
+  * A config file overrides all name modifiers, no matter what.
+  * Any file that contains the '@' character or a leading '_' will need to have
+    a compatible name and a corresponding config file to work. The rationale is
+    that this is a very uncommon situation, so we don't bother accomodating it.
+  '''
+
+  # get the file name for the given path
+  raw_name = os.path.basename(path)
+
+  # determine if we need to add a leading dot to the destination, then remove it
+  # from the name if present.
+  is_hidden = raw_name[0] == '_'
+  if is_hidden:
+    raw_name = raw_name[1:]
+
+  # attempt to find machine ids
+  parts = raw_name.split('@')
+
+  # build the final base name
+  name = util.toggle_hidden(parts[0], is_hidden)
+
+  # get the remaining machine ids
+  machine_ids = parts[1:]
+
+  config = {
+    'paths': [name],
+    'machines': machine_ids,
+  }
+
+  return normalize_file_config(config, dest)
+
+def get_file_config(path, dest):
+  '''
+  Return a normalized config for the given path. If a config file exists for the
+  given path, returns its contents instead and skips parsing.
+  '''
+
+  # normalize our path to the destination directory first
+  path = util.normalize_to_root(path, dest)
+
+  # immediately return the config as written if one exists
+  config = load_file_config_file(path, dest)
+  if config is not None:
+    return config
+
+  # otherwise, parse and return the file name itself
+  return parse_file_config(path, dest)

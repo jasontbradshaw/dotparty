@@ -21,24 +21,24 @@ import util
 def link(conf, args):
   '''Link all files in the dotparty directory to their configured locations.'''
 
-  # add all the files that are immediate children of the base directory, are not
-  # hidden, are not ignored, and do not have a custom config.
+  # load our machine id so we know which files to link
+  machine_id = config.get_machine_id()
+
+  # map all file paths to their destination configs for this machine
   links = {}
   for path in os.listdir(constants.DOTPARTY_DIR):
     path = util.normalize_to_root(path, constants.DOTPARTY_DIR)
 
     is_hidden = util.is_hidden(path)
     is_ignored = path in conf['ignore']
-    has_custom_config = path in conf['links']
 
-    if not is_hidden and not is_ignored and not has_custom_config:
-      links[path] = config.path_to_long_form(path, conf['destination'])
+    if not is_hidden and not is_ignored:
+      # load the config for the given path
+      file_config = config.get_file_config(path, conf['destination'])
 
-  # add explicitly configured files, skipping those not meant for this machine
-  machine_id = config.get_machine_id()
-  for path, info in conf['links'].iteritems():
-    if machine_id in info['machines']:
-      links[path] = info
+      # if the file belongs on this machine, store its config
+      if config.machine_matches(machine_id, file_config['machines']):
+        links[path] = file_config
 
   # find the longest link basename for pretty output formatting
   max_src_width = max(len(os.path.basename(k)) for k in links.keys())
@@ -74,7 +74,7 @@ def link(conf, args):
 
     print(msg)
 
-  # return the created links
+  # return the created links for good measure
   return links
 
 def install(conf, args):
