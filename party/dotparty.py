@@ -20,15 +20,15 @@ import constants
 import util
 
 def link(conf, args):
-  '''Link all files in the dotparty directory to their configured locations.'''
+  '''Link all files in the repo directory to their configured locations.'''
 
   # load our machine id so we know which files to link
   machine_id = config.get_machine_id()
 
   # map all file paths to their destination configs for this machine
   links = {}
-  for path in os.listdir(constants.DOTPARTY_DIR):
-    path = util.normalize_to_root(path, constants.DOTPARTY_DIR)
+  for path in os.listdir(constants.REPO_DIR):
+    path = util.normalize_to_root(path, constants.REPO_DIR)
 
     is_hidden = util.is_hidden(path)
     is_ignored = path in conf['ignore']
@@ -78,15 +78,6 @@ def link(conf, args):
   # return the created links for good measure
   return links
 
-def install(conf, args):
-  '''Clone a package to the packages directory.'''
-
-  # TODO:
-  # - determine whether we're dealing with a repo URL or a github reference
-  # - build a URL if we weren't given one
-  # - add the package to the config if --save is specified
-  # - clone it to the package directory
-
 def manage(conf, args):
   '''
   Move a file to the base directory and leave a link pointing to its new
@@ -105,8 +96,8 @@ def manage(conf, args):
   # mark files that aren't direct descendants of the root as such
   unrooted = os.path.dirname(args.path) != conf['destination']
 
-  # get the path of the file if it will be copied into the dotparty directory
-  dest_path = os.path.join(constants.DOTPARTY_DIR, os.path.basename(args.path))
+  # get the path of the file if it will be copied into the repo directory
+  dest_path = os.path.join(constants.REPO_DIR, os.path.basename(args.path))
 
   # rename the file as appropriate to to its original name
   dest_path, config_file_path = config.configify_file_name(dest_path)
@@ -146,33 +137,59 @@ def manage(conf, args):
 
   print(color.cyan(args.path), 'copied and linked')
 
-  # TODO:
-  # - add and commit the file to the repo if --save is specified
-  # - modify the config for the new file if necessary
+  # add and commit the file to the repo if --save is specified
+  if args.save:
+    files = [color.cyan(os.path.basename(dest_path))]
+    if config_file_path:
+      files.append(color.cyan(os.path.basename(config_file_path)))
+    files = files.join(' and ')
 
-  # # move us to the current dotparty directory so all git commands start there
-  # os.chdir(constants.DOTPARTY_DIR)
+    print('Adding', files, 'to the repository...')
 
-  # # alert the user if we have uncommitted changes (git exits non-0 in this case)
-  # if git.diff(exit_code=True, quiet=True, _ok_code=(0, 1)).exit_code != 0:
-  #   print('dotparty repo has uncommitted changes - the newly-managed file',
-  #       'will have to be added to the repo manually', file=sys.stderr)
+    # move us to the current repo directory so all git commands start there
+    os.chdir(constants.REPO_DIR)
+
+    # alert the user if we have uncommitted changes (git exits non-0 in this case)
+    if git.diff(exit_code=True, quiet=True, _ok_code=(0, 1)).exit_code != 0:
+      raise ValueError('The repository has uncommitted changes - the '
+        'newly-managed file will have to be added to the repo manually.')
+
+    # add the new files to the staging area
+    git.add(dest_path)
+    if config_file_path is not None:
+      git.add(config_file_path)
+
+    print('Successfully added', files, 'to the repository')
+    print('Committing changes...')
+
+    # commit the file to the repository
+    commit_message = 'Manage %s' % os.path.basename(args.path)
+    git.commit(m=commit_message, quiet=True)
+
+    print('Commit successful!')
+    print('Pushing committed changes...')
+
+    # pull any changes down from upstream, then push our new addition
+    git.pull(rebase=True, quiet=True)
+    git.push(quiet=True)
+
+    print('Push successful!')
 
 def update(conf, args):
-  '''Apply dotparty updates from the upstream repository.'''
+  '''Apply updates from the upstream repository.'''
 
   print('Checking for updates...')
 
   # fetch changes from the canonical repo
-  git.fetch(constants.DOTPARTY_REMOTE, no_tags=True)
+  git.fetch(constants.GIT_REMOTE, no_tags=True, quiet=True)
 
   # get a list of the commit messages for the incoming changes
-  updates = git.log('..FETCH_HEAD', oneline=True).splitlines()
-  updates = tuple(m.split(None, 1) for m in updates)
+  updates = git('--no-pager', 'log', '..FETCH_HEAD', oneline=True)
+  updates = [tuple(m.split(None, 1)) for m in updates.splitlines()]
 
   # print out a list of the incoming updates
   if len(updates) > 0:
-    print('There are updates available:')
+    print('Available updates:')
 
     max_updates = 10
     for commit, msg in updates[:max_updates]:
@@ -180,17 +197,48 @@ def update(conf, args):
 
     # print a special message if too many updates are available
     if len(updates) > max_updates:
-      print('...and %d more!' % (len(updates) - max_updates))
+      print('...and', color.green(len(updates) - max_updates), 'more!')
       print('Run `git log ..FETCH_HEAD` to see the full list')
+
+    # bail if we have uncommitted changes (git exits non-0 in this case)
+    if git.diff(exit_code=True, quiet=True, _ok_code=(0, 1)).exit_code != 0:
+      raise ValueError('The repository has uncommitted changes. Handle them, '
+        'then try updating again.')
+
+    print('Applying the update...')
+
+    # stash _all_ changes to the repo
+    git.stash(include_untracked=True, all=True, quiet=True)
+
+    # squash all the fetched commits together and merge them into master
+    git.merge('@{u}', squash=True, quiet=True)
+
+    # add a nice update commit that includes the latest upstream commit hash
+    commit_message = 'Update dotparty to %s' % updates[0][0]
+    git.commit(m=commit_message, quiet=True)
+
+    # TODO: if squash merge failed, roll back to the pre-update state and
+    # complain with instructions for the user to do their own update.
+
+    # un-stash all our old changes
+    git.stash('pop', quiet=True)
+
+    # push our changes back up to the remote
+    git.push(quiet=True)
+
+    print('Update successful!')
   else:
     print('Already up-to-date!')
 
+def install(conf, args):
+  '''Clone a package to the packages directory.'''
+
   # TODO:
-  # - stash current modifications to the repo
-  # - squash rebase the updates on top as a single commit (for a nice history)
-  # - attempt to un-stash the changes
-  # - if rebase failed, roll back to the pre-update state and complain with
-  #   instructions for the user to do their own update
+  # - determine whether we're dealing with a repo URL or a github reference
+  # - build a URL if we weren't given one
+  # - add the package to the config if --save is specified
+  # - clone it to the package directory
+  # - run its post-install script
 
 def upgrade(conf, args):
   '''Upgrade the specified (or all, by default) packages.'''
@@ -198,7 +246,6 @@ def upgrade(conf, args):
   # TODO:
   # - iterate over all packages in the installed list and pull them, updating
   #   them if their folders exist, installing otherwise
-  # - do the whole stash/rebase/pop dance during the update
 
 def main():
   # make sure the user has the correct versions of required software installed

@@ -9,11 +9,11 @@ VERSION = (0, 0, 0)
 
 # the git remote where the dotparty repository lives. used for updating dotparty
 # to the latest version.
-DOTPARTY_REMOTE = 'https://github.com/jasontbradshaw/dotparty.git'
+GIT_REMOTE = 'https://github.com/jasontbradshaw/dotparty.git'
 
 # the directories that the dotparty files and script live in
 # NOTE: these assume that these files are within the script directory!
-DOTPARTY_DIR = os.path.dirname(util.normpath(os.path.join(__file__, '../')))
+REPO_DIR = os.path.dirname(util.normpath(os.path.join(__file__, '../')))
 SCRIPT_DIR = os.path.dirname(util.normpath(__file__))
 
 # config file paths

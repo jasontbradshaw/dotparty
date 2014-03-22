@@ -72,7 +72,7 @@ def load_config(user_path=constants.USER_CONFIG_PATH,
 
   # expand globs in the ignored list and root them in the dotparty directory
   config['ignore'] = frozenset(
-      util.expand_globs(config['ignore'], root=constants.DOTPARTY_DIR))
+      util.expand_globs(config['ignore'], root=constants.REPO_DIR))
 
   # normalize the destination directory
   config['destination'] = util.normpath(config['destination'])
