@@ -6,6 +6,7 @@ from __future__ import print_function
 # FIXME: remove this!
 from pprint import pprint as pp
 
+import json
 import os
 import shutil
 import sys
@@ -88,39 +89,60 @@ def install(conf, args):
 
 def manage(conf, args):
   '''
-  Move a file to the base directory and create a link pointing to its original
-  location.
+  Move a file to the base directory and leave a link pointing to its new
+  location in its place.
   '''
+  # bail if the file is already a link
+  if os.path.islink(args.path):
+    raise ValueError('Unable to manage ' + color.cyan(args.path) +
+        " since it's already a link!")
 
   # make sure the path is a descendant of the destination directory
   if not util.is_descendant(args.path, conf['destination']):
     raise ValueError("Unable to manage files that aren't descendants of " +
         'the destination directory (' + color.cyan(conf['destination']) + ')')
 
-  # TODO: handle managing files that AREN'T in the root of the destination dir
-  if os.path.dirname(args.path) != conf['destination']:
-    raise ValueError("Unable to manage files that aren't direct descendants " +
-        'of the destination directory (' + color.cyan(conf['destination']) + ')')
+  # mark files that aren't direct descendants of the root as such
+  unrooted = os.path.dirname(args.path) != conf['destination']
 
-  # get the path of the file if it will be copied into the dotparty directory.
-  # the managed file will NOT be hidden, even if the original was.
-  dotparty_path = os.path.join(constants.DOTPARTY_DIR,
-      os.path.basename(args.path))
-  dotparty_path = util.toggle_hidden(util.normpath(dotparty_path), False)
+  # get the path of the file if it will be copied into the dotparty directory
+  dest_path = os.path.join(constants.DOTPARTY_DIR, os.path.basename(args.path))
+
+  # rename the file as appropriate to to its original name
+  dest_path, config_file_path = config.configify_file_name(dest_path)
+
+  # give unrooted files a config file path so they'll go to the correct place
+  if unrooted and config_file_path is None:
+    config_file_path = util.toggle_hidden(dest_path, True)
 
   # bail if the file is already managed and we're not overwriting
-  if os.path.exists(dotparty_path) and not args.force:
+  dest_exists = os.path.exists(dest_path)
+  config_exists = (config_file_path is not None and
+      os.path.exists(config_file_path))
+  if (dest_exists or config_exists) and not args.force:
     raise ValueError("Can't manage " + color.cyan(args.path) +
-        " since it already exists (use --force to override)")
+        " since it already appears to be managed (use --force to override)")
 
-  # remove the destination file since we'll be overwriting it
-  util.rm(dotparty_path, force=True)
+  # create a file config if necessary
+  # replace any existing dest file with a copy of the new one
+  util.rm(dest_path, force=True)
+  util.cp(args.path, dest_path, recursive=True)
 
-  # copy the file to its new location
-  util.cp(args.path, dotparty_path, recursive=True)
+  # replace any existing config file with our new one
+  if config_file_path is not None:
+    util.rm(config_file_path, force=True)
+
+    # build a config for this file
+    file_config = config.normalize_file_config({
+      'paths': [args.path],
+    }, conf['destination'])
+
+    # create a config file from our config dict
+    with open(config_file_path, 'w') as f:
+      json.dump(file_config, f, indent=2)
 
   # create a link to the new location, overwriting the old file
-  util.symlink(args.path, dotparty_path, overwrite=True)
+  util.symlink(args.path, dest_path, overwrite=True)
 
   print(color.cyan(args.path), 'copied and linked')
 

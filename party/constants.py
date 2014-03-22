@@ -21,3 +21,7 @@ MACHINE_ID_PATH = util.normpath('~/.party-machine')
 USER_CONFIG_PATH = util.normpath('~/.party.json')
 DEFAULT_CONFIG_PATH = util.normpath(
     os.path.join(SCRIPT_DIR, 'party-default.json'))
+
+# the characters used in our special file names
+DOT_CHARACTER = '_'
+MACHINE_SEPARATOR_CHARACTER = '@'

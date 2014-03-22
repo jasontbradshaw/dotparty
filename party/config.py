@@ -165,12 +165,12 @@ def parse_file_config(path, dest):
 
   # determine if we need to add a leading dot to the destination, then remove it
   # from the name if present.
-  is_hidden = raw_name[0] == '_'
+  is_hidden = raw_name[0] == constants.DOT_CHARACTER
   if is_hidden:
     raw_name = raw_name[1:]
 
   # attempt to find machine ids
-  parts = raw_name.split('@')
+  parts = raw_name.split(constants.MACHINE_SEPARATOR_CHARACTER)
 
   # build the final base name
   name = util.toggle_hidden(parts[0], is_hidden)
@@ -184,6 +184,38 @@ def parse_file_config(path, dest):
   }
 
   return normalize_file_config(config, dest)
+
+def configify_file_name(path):
+  '''
+  Given a path, name it and its config file appropriately for our config naming
+  scheme. If no config file is necessary, None is used instead. Returns a tuple
+  of the new name and the config file name.
+  '''
+
+  base, name = os.path.split(path)
+
+  # determine whether our path name is clean or not
+  is_clean = not (name.startswith(constants.DOT_CHARACTER) or
+      constants.MACHINE_SEPARATOR_CHARACTER in name)
+
+  # always un-hide the name
+  name = util.toggle_hidden(name, False)
+  config_file_name = None
+
+  if is_clean:
+    # add our dot character if the file was originally hidden
+    if util.is_hidden(path):
+      name = constants.DOT_CHARACTER + name
+  else:
+    # otherwise, set the config file to the hidden version of the name
+    config_file_name = util.toggle_hidden(name, True)
+
+  configified_path = os.path.join(base, name)
+  config_file_path = None
+  if config_file_name is not None:
+    config_file_path = os.path.join(base, config_file_name)
+
+  return (configified_path, config_file_path)
 
 def get_file_config(path, dest):
   '''
