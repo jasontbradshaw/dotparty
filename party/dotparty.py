@@ -42,10 +42,12 @@ def link(conf, args):
         links[path] = file_config
 
   # find the longest link basename for pretty output formatting
-  max_src_width = max(len(os.path.basename(k)) for k in links.keys())
-  link_symbol = ' -> '
+  max_src_width = 0
+  if len(links) > 0:
+    max_src_width = max(len(os.path.basename(k)) for k in links.keys())
 
   # link the files to their destination(s)
+  link_symbol = ' -> '
   for src, info in links.iteritems():
     msg = os.path.basename(src).rjust(max_src_width)
     msg += color.grey(link_symbol)
