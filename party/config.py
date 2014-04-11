@@ -150,7 +150,7 @@ def parse_file_config(path, dest):
 
   * First leading '_' is replaced with a '.'.
   * When split on '@', every part excluding the first is treated as a machine id
-  on which to link the given file.
+    on which to link the given file.
   * Any file named the same as the local file preceded by a '.' is treated as a
     special config file for that local file.
   * Any of these rules may be combined.
